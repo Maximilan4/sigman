@@ -17,8 +17,8 @@ func Test_getFName(t *testing.T) {
 	f := func() {}
 
 	name := getFName(f)
-	if name != "sigman.Test_getFName.func1" {
-		t.Error("Expected sigman.Test_getFName.func1, got ", name)
+	if name != "github.com/Maximilan4/sigman.Test_getFName.func1" {
+		t.Error("Expected github.com/Maximilan4/sigman.Test_getFName.func1, got ", name)
 	}
 }
 
