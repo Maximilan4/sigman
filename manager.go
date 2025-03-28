@@ -28,6 +28,7 @@ type (
 		ctxCancel context.CancelFunc
 		logger    *log.Logger
 		mut       *sync.Mutex
+		cond      *sync.Cond
 		started   bool
 	}
 )
@@ -61,6 +62,7 @@ func New(options ...Option) *Sigman {
 
 	m.handlers = make(map[os.Signal][]SignalHandlerFunc, len(m.signals))
 	m.mut = new(sync.Mutex)
+	m.cond = sync.NewCond(m.mut)
 	return &m
 }
 
@@ -123,6 +125,7 @@ func (sm *Sigman) Wait(ctx context.Context) error {
 
 	sm.mut.Lock()
 	if sm.started {
+		sm.mut.Unlock()
 		return errors.New("already started")
 	}
 	sm.started = true
@@ -131,6 +134,7 @@ func (sm *Sigman) Wait(ctx context.Context) error {
 	sm.ctx, sm.ctxCancel = context.WithCancel(ctx)
 	sm.ctx = context.WithValue(sm.ctx, CtxKey, &sm)
 	sm.mut.Unlock()
+	sm.cond.Broadcast()
 
 	for {
 		select {
@@ -144,13 +148,16 @@ func (sm *Sigman) Wait(ctx context.Context) error {
 				continue
 			}
 
-			sm.logger.Printf("got '%s' signal, executing %d handlers\n", sig, len(sm.handlers[sig]))
+			handlers := make([]SignalHandlerFunc, len(sm.handlers[sig]))
+			copy(handlers, sm.handlers[sig])
+			sm.mut.Unlock()
+
+			sm.logger.Printf("got '%s' signal, executing %d handlers\n", sig, len(handlers))
 			var err error
-			for _, handler := range sm.handlers[sig] {
+			for _, handler := range handlers {
 				err = handler(sm.ctx, sig, sm)
 				sm.logger.Printf("exec %s: err=%v\n", getFName(handler), err)
 			}
-			sm.mut.Unlock()
 		}
 	}
 }
@@ -166,10 +173,14 @@ func (sm *Sigman) Start(ctx context.Context) {
 
 // Stop - stops current process and cancels internal context
 func (sm *Sigman) Stop() error {
-	if sm.ctx == nil {
+	sm.mut.Lock()
+
+	if sm.ctx == nil || sm.started == false {
 		return nil
 	}
 
+	sm.started = false
+	sm.mut.Unlock()
 	sm.ctxCancel()
 	err := context.Cause(sm.ctx)
 	if errors.Is(err, context.Canceled) {
@@ -181,13 +192,18 @@ func (sm *Sigman) Stop() error {
 
 func (sm *Sigman) Close() error {
 	sm.mut.Lock()
-	defer sm.mut.Unlock()
 	signal.Stop(sm.ch)
 	close(sm.ch)
+	sm.mut.Unlock()
 	return sm.Stop()
 }
 
-// Ctx - returns a manager context. Can be nil, if manager was not started
+// Ctx - returns a manager context. This method will await, until Wait or Start methods will be called
 func (sm *Sigman) Ctx() context.Context {
+	sm.cond.L.Lock()
+	for sm.ctx == nil {
+		sm.cond.Wait()
+	}
+	defer sm.cond.L.Unlock()
 	return sm.ctx
 }

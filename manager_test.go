@@ -180,16 +180,21 @@ func TestManager_StopOnSignal(t *testing.T) {
 	defer cancel()
 	man := New(Logger(logger), Signals(syscall.SIGTERM))
 	_ = man.Add(Shutdown, syscall.SIGTERM)
-
-	time.AfterFunc(time.Second/2, func() {
-		if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
-			t.Error(err)
+	man.Start(ctx)
+	for {
+		select {
+		case <-man.Ctx().Done():
+			if man.started {
+				t.Error("started flag is not false")
+			}
+			return
+		case <-time.After(time.Second / 2):
+			if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
+				t.Error(err)
+			}
 		}
-	})
-
-	if err := man.Wait(ctx); !errors.Is(err, context.Canceled) {
-		t.Error(err)
 	}
+
 }
 
 func TestManager_WaitErr(t *testing.T) {
@@ -219,10 +224,15 @@ func TestManager_WaitErr(t *testing.T) {
 		}
 
 	})
-	// time.AfterFunc(time.Second/2, func() {
-	// 	if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
-	// 		t.Error(err)
-	// 	}
-	// })
+}
 
+func TestManager_Сtx(t *testing.T) {
+	logger := log.New(io.Discard, "sigman", log.LstdFlags)
+	man := New(Logger(logger), Signals(syscall.SIGTERM))
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	man.Start(ctx)
+	if !reflect.DeepEqual(man.ctx, man.Ctx()) {
+		t.Error("contexts are not equal`s")
+	}
 }
