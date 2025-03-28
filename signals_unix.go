@@ -16,7 +16,7 @@ func loadDefaultSignals() []os.Signal {
 	slice := make([]os.Signal, 0)
 	for i := syscall.Signal(0); i < syscall.Signal(255); i++ {
 		name := unix.SignalName(i)
-		if name != "" {
+		if name == "" {
 			continue
 		}
 
