@@ -10,43 +10,7 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
-	"syscall"
 )
-
-var DefaultSignals = []os.Signal{
-	syscall.SIGABRT,
-	syscall.SIGALRM,
-	syscall.SIGBUS,
-	syscall.SIGCHLD,
-	syscall.SIGCONT,
-	syscall.SIGEMT,
-	syscall.SIGFPE,
-	syscall.SIGHUP,
-	syscall.SIGILL,
-	syscall.SIGINFO,
-	syscall.SIGINT,
-	syscall.SIGIO,
-	syscall.SIGIOT,
-	syscall.SIGKILL,
-	syscall.SIGPIPE,
-	syscall.SIGPROF,
-	syscall.SIGQUIT,
-	syscall.SIGSEGV,
-	syscall.SIGSTOP,
-	syscall.SIGSYS,
-	syscall.SIGTERM,
-	syscall.SIGTRAP,
-	syscall.SIGTSTP,
-	syscall.SIGTTIN,
-	syscall.SIGTTOU,
-	syscall.SIGURG,
-	syscall.SIGUSR1,
-	syscall.SIGUSR2,
-	syscall.SIGVTALRM,
-	syscall.SIGWINCH,
-	syscall.SIGXCPU,
-	syscall.SIGXFSZ,
-}
 
 type (
 	// managerCtxKey - type for storing manager in context
@@ -191,7 +155,7 @@ func (sm *Sigman) Wait(ctx context.Context) error {
 	}
 }
 
-// Shutdown -
+// Stop - stops current process and cancels internal context
 func (sm *Sigman) Stop() error {
 	if sm.ctx == nil {
 		return nil
