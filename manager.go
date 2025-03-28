@@ -176,6 +176,7 @@ func (sm *Sigman) Stop() error {
 	sm.mut.Lock()
 
 	if sm.ctx == nil || sm.started == false {
+		sm.mut.Unlock()
 		return nil
 	}
 
