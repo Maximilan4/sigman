@@ -52,10 +52,17 @@ func main() {
 		syscall.Kill(syscall.Getpid(), syscall.SIGUSR1)
 	})
 
-	// ctx with timeout just for example
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	// baseCtx with timeout just for example
+	baseCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err = sm.Wait(ctx); err != nil {
-		log.Fatal(err)
-	}
+	// blocking mode
+	// if err = sm.Wait(baseCtx); err != nil {
+	// 	log.Fatal(err)
+	// }
+	sm.Start(baseCtx) // run Wait in separate goroutine
+	// time.Sleep(time.Second / 2)
+	ctx := sm.Ctx() // get an inner ctx
+	log.Println("awaiting signal")
+	<-ctx.Done()
+	log.Println("exiting")
 }
