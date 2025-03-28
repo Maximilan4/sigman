@@ -155,6 +155,15 @@ func (sm *Sigman) Wait(ctx context.Context) error {
 	}
 }
 
+// Start - run wait process in background
+func (sm *Sigman) Start(ctx context.Context) {
+	go func() {
+		if err := sm.Wait(ctx); err != nil {
+			sm.logger.Printf("wait err: %v\n", err)
+		}
+	}()
+}
+
 // Stop - stops current process and cancels internal context
 func (sm *Sigman) Stop() error {
 	if sm.ctx == nil {
